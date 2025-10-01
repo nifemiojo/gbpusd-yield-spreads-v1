@@ -1,0 +1,7 @@
+,0
+uk_2y,float64
+us_2y,float64
+spread_bp,float64
+spread_abs_change_daily,float64
+spread_bp_z_score,float64
+spread_abs_change_daily_z_score,float64

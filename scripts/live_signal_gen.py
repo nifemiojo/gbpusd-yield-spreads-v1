@@ -43,6 +43,7 @@ dtype_map = {
 spread_history = pd.read_csv("data/uk_us_2y_spread.csv", dtype=dtype_map, parse_dates=[0], index_col=0)
 
 # Add latest data (calc spread and add to df)
+# TODO: If either latest_us_2y or latest_uk_2y is None, skip
 latest_spread = latest_uk_2y - latest_us_2y
 spread_history.loc[last_weekday] = latest_spread
 

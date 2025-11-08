@@ -48,15 +48,12 @@ class IGClient:
             data=json.dumps(payload)
         )
 
-        print(response.status_code, response.text, response.headers)
-
         self.cst = response.headers.get("CST")
         self.x_security_token = response.headers.get("X-SECURITY-TOKEN")
         self.last_login = time.time()
         self._update_headers()
 
         print("Logged in successfully.")
-        print(self.session.headers)
 
     def refresh_session(self):
         """Keep the session alive."""
@@ -64,11 +61,14 @@ class IGClient:
 
         response = self.session.put(f"{self.base_url}/session")
 
+        response.raise_for_status()
+
         if response.status_code == 200:
             print("Session refreshed.")
             self.last_login = time.time()
         else:
             print("Session refresh failed, re-logging in.")
+            print(response.text)
             self.login()
 
     def _auto_refresh_if_needed(self, max_age=3600):
@@ -101,9 +101,11 @@ class IGClient:
         return self.request("GET", "/positions", version="2").json()
     
     def logout(self):
-        response =self.request("DELETE", "/session").json()
+        response = self.request("DELETE", "/session")
+
+        response.raise_for_status()
+        print("Logged out successfully.")
 
         self.session.close()
-        print("Logged out successfully.")
 
         return response

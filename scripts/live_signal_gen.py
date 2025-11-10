@@ -4,7 +4,18 @@ from datetime import date, timedelta
 from dotenv import load_dotenv
 from boe_scrapper import get_uk_2y_yield
 import os
-import yfinance as yf
+from ig_service import IGClient
+from decimal import Decimal, ROUND_HALF_UP
+
+def calculate_position_size(equity, current_price):
+    desired_notional_exposure = 0.1 * equity
+    notional_per_one_pound_per_point = current_price * 10000
+    size = desired_notional_exposure / notional_per_one_pound_per_point
+
+    if size < 0.04: # Hardcoded min for GBP/USD
+        size = 0.04
+
+    return Decimal(size).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 # Load Config
 load_dotenv()
@@ -61,4 +72,43 @@ elif spread_z_score < -1:
 else:
     signal = 0
 
+# Execution
+ig_client = IGClient()
+
 # Get Account Equity
+accounts_response = ig_client.get_accounts()
+
+account = [a for a in accounts_response["accounts"] if a["accountId"] == "Z5YBJN"][0]
+equity = account["balance"]["balance"] + account["balance"]["profitLoss"]
+
+
+# Get Account Position
+positions_response = ig_client.get_positions()
+
+gbp_usd_positions = [position for position in positions_response["positions"] if position["market"]["instrumentName"] == "GBP/USD"]
+has_open_gbp_position = len(gbp_usd_positions) > 0 # TODO: Handle cases where multiple positions exist
+
+if has_open_gbp_position:
+    existing_position_direction = gbp_usd_positions[0]["position"]["direction"]
+else :
+    existing_position_direction = None
+
+if (signal == -1 and existing_position_direction == "Sell") or (signal == 1 and existing_position_direction == "Buy") or (signal == 0 and existing_position_direction == None): 
+    # Do nothing
+    pass
+elif signal == 0:
+    ig_client.close_position(gbp_usd_positions[0]["position"])
+elif existing_position_direction == None:
+    current_price = ig_client.get_current_price("GBP/USD")
+    position_size = calculate_position_size(equity, current_price)
+
+    ig_client.place_market_order("GBP/USD", "Buy" if signal == 1 else "Sell", equity)
+else:
+    ig_client.close_position(gbp_usd_positions[0]["position"])
+
+    current_price = ig_client.get_current_price("GBP/USD")
+    position_size = calculate_position_size(equity, current_price)
+
+    ig_client.place_market_order("GBP/USD", "Buy" if signal == 1 else "Sell", equity)
+
+

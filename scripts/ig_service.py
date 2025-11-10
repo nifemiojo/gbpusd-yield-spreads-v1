@@ -100,6 +100,37 @@ class IGClient:
     def get_positions(self):
         return self.request("GET", "/positions", version="2").json()
     
+    def close_position(self, inner_position_object):
+        body = {
+            "dealId": inner_position_object["dealId"],
+            "direction": "BUY" if inner_position_object["direction"] == "SELL" else "SELL",
+            "size": inner_position_object["size"],
+            "orderType": "MARKET"
+        }
+
+        response = self.request("DELETE", f"/positions/otc", version="2", data=json.dumps(body))
+
+        if response.status_code == 200:
+            print("Close request accepted.")
+            return response.json()
+        else:
+            print(f"Failed to close position ({response.status_code}): {response.text}")
+            return None
+
+    def place_market_order(self, direction, size):
+        payload = {
+            "epic": "CS.D.GBPUSD.TODAY.IP",
+            "direction": direction,
+            "orderType": "MARKET",
+            "size": size,
+            "currencyCode": "GBP",
+            "expiry": "-",
+            "forceOpen": False,
+            "guaranteedStop": False
+        }
+
+        return self.request("POST", "/positions/otc", version="2", data=json.dumps(payload)).json()
+    
     def logout(self):
         response = self.request("DELETE", "/session")
 

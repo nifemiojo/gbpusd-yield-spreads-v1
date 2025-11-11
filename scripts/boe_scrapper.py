@@ -26,6 +26,8 @@ def get_uk_2y_yield(target_date: datetime = None) -> float:
     resp = requests.get(url)
     resp.raise_for_status()
 
+    print("Successfully downloaded latest yield curve data from BoE.")
+
     with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
         # Find the Excel file with "Nominal" in its name
         nominal_files = [file for file in z.namelist() if re.search(r"nominal", file, re.IGNORECASE)]
@@ -43,6 +45,8 @@ def get_uk_2y_yield(target_date: datetime = None) -> float:
                 raise ValueError("No sheet containing 'spot curve' found.")
             
             df = pd.read_excel(xls, sheet_name=spot_sheet, header=None)
+
+            print(f"Succesfully created dataframe from {file_name} sheet {spot_sheet}")
     
     # Clean up and identify where the data starts
     # Find the header row (contains "years")

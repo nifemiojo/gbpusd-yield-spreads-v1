@@ -21,6 +21,8 @@ class IGClient:
 
         self.login()
 
+        print("IG Client initialized.")
+
     def _update_headers(self):
         self.session.headers.update({
             "X-IG-API-KEY": self.api_key,
@@ -130,6 +132,10 @@ class IGClient:
         }
 
         return self.request("POST", "/positions/otc", version="2", data=json.dumps(payload)).json()
+    
+    # TODO
+    def get_current_price(self, epic):
+        return self.request("GET", f"/marketdata/{epic}").json()
     
     def logout(self):
         response = self.request("DELETE", "/session")

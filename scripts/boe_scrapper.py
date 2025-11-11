@@ -22,8 +22,18 @@ def get_uk_2y_yield(target_date: datetime = None) -> float:
     # Bank of England latest yield curve zip
     url = "https://www.bankofengland.co.uk/-/media/boe/files/statistics/yield-curves/latest-yield-curve-data.zip"
 
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/118.0.5993.90 Safari/537.36"
+        ),
+        "Accept": "application/zip,application/octet-stream,*/*;q=0.8",
+        "Referer": "https://www.bankofengland.co.uk/statistics/yield-curves"
+    }
+
     print("Downloading latest yield curve data from BoE...")
-    resp = requests.get(url)
+    resp = requests.get(url, headers=headers)
     resp.raise_for_status()
 
     print("Successfully downloaded latest yield curve data from BoE.")

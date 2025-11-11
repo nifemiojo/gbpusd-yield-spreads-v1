@@ -7,9 +7,12 @@ import os
 from ig_service import IGClient
 from decimal import Decimal, ROUND_HALF_UP
 
-def calculate_position_size(equity, current_price):
+def calculate_position_size(equity, current_price_obj, direction):
     desired_notional_exposure = 0.1 * equity
-    notional_per_one_pound_per_point = current_price * 10000
+
+    current_price = current_price_obj["ask"] if direction == "BUY" else current_price_obj["bid"]
+    notional_per_one_pound_per_point = current_price # Price is already per point
+
     size = desired_notional_exposure / notional_per_one_pound_per_point
 
     if size < 0.04: # Hardcoded min for GBP/USD
@@ -45,9 +48,7 @@ load_dotenv()
 FRED_API_KEY = os.getenv("FRED_API_KEY")
 
 # Setup Fred Client
-fred = Fred(api_key="FRED_API_KEY")
-
-print("Successfully connected to FRED...")
+fred = Fred(api_key=FRED_API_KEY)
 
 us_2y: pd.Series = fred.get_series("DGS2", last_weekday)
 
@@ -55,7 +56,7 @@ if us_2y.empty:
     print("No data found for US 2Y yield.")
     latest_us_2y = None
 else:
-    latest_us_2y = us_2y.loc[last_weekday]
+    latest_us_2y = us_2y.iloc[0]
     print(f"Data found for US 2Y yield. Latest yield: {latest_us_2y}")
 
 # Get Latest UK 2Y
@@ -79,7 +80,7 @@ print("Appending latest spread data to historical data and saving...")
 
 # Load historical data
 # Load dtype map
-dtype_map = pd.read_csv("data/uk_us_2y_spread_dtypes.csv", index_col=0).to_dict()
+dtype_map = pd.read_csv("scripts/data/uk_us_2y_spread_dtypes.csv", index_col=0).to_dict()
 
 # Convert dtype strings to actual Python types
 dtype_map = {
@@ -88,15 +89,15 @@ dtype_map = {
 }
 
 # Load cleaned data with correct types
-spread_history = pd.read_csv("data/uk_us_2y_spread.csv", dtype=dtype_map, parse_dates=[0], index_col=0)
+spread_history = pd.read_csv("scripts/data/uk_us_2y_spread.csv", dtype=dtype_map, parse_dates=[0], index_col=0)
 
 # Add latest data (calc spread and add to df)
 latest_spread = latest_uk_2y - latest_us_2y
 spread_history.loc[last_weekday] = latest_spread
 
 # Overwrite latest to CSV
-spread_history.to_csv("data/uk_us_2y_spread.csv")
-spread_history.dtypes.to_csv("data/uk_us_2y_spread_dtypes.csv")
+spread_history.to_csv("scripts/data/uk_us_2y_spread.csv")
+spread_history.dtypes.to_csv("scripts/data/uk_us_2y_spread_dtypes.csv")
 
 print("Successfully calculated and saved spread history...")
 
@@ -105,13 +106,13 @@ print("Generating live signal...")
 spread_z_score = ((spread_history.loc[last_weekday] - spread_history.mean()) / spread_history.std()).iloc[0]
 
 if spread_z_score > 1:
-    print("Spread is above 1 standard deviation. GBP/USD buy signal...")
+    print("Spread is above 1 standard deviation. GBP/USD BUY signal...")
     signal = 1
 elif spread_z_score < -1:
-    print("Spread is below -1 standard deviation. GBP/USD sell signal...")
+    print("Spread is below -1 standard deviation. GBP/USD SELL signal...")
     signal = -1
 else:
-    print("Spread is within 1 standard deviation. Flat signal...")
+    print("Spread is within 1 standard deviation. FLAT signal...")
     signal = 0
 
 # Execution
@@ -156,7 +157,7 @@ elif existing_position_direction == None:
     print(f"No existing position. Placing new {new_direction} order...")
 
     current_price = ig_client.get_current_price()
-    position_size = calculate_position_size(equity, current_price)
+    position_size = calculate_position_size(equity, current_price, new_direction)
 
     ig_client.place_market_order(new_direction, equity)
 
@@ -170,7 +171,7 @@ else:
     print(f"No existing position. Placing new {new_direction} order...")
 
     current_price = ig_client.get_current_price()
-    position_size = calculate_position_size(equity, current_price)
+    position_size = calculate_position_size(equity, current_price, new_direction)
 
     ig_client.place_market_order(new_direction, equity)
 

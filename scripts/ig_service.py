@@ -133,9 +133,10 @@ class IGClient:
 
         return self.request("POST", "/positions/otc", version="2", data=json.dumps(payload)).json()
     
-    # TODO
-    def get_current_price(self, epic):
-        return self.request("GET", f"/marketdata/{epic}").json()
+    # Return price object: e.g. {'bid': 13172.8, 'ask': 13173.7, 'lastTraded': None}
+    def get_current_price(self):
+        response = self.request("GET", "/prices/CS.D.GBPUSD.TODAY.IP", version="3").json()
+        return sorted(response["prices"], key=lambda x: x["snapshotTime"], reverse=True)[0]["closePrice"]
     
     def logout(self):
         response = self.request("DELETE", "/session")
